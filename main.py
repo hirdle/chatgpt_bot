@@ -105,7 +105,9 @@ async def start_function(message: types.Message):
 @dp.message_handler(commands=['start'])
 async def start_function(message: types.Message):
 
-    getDialog(message.from_user.id)
+    # getDialog(message.from_user.id)
+
+    add_user(message.from_user.first_name, message.from_user.id)
 
     if await check_subscrition(message):
         return
