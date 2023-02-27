@@ -1,5 +1,7 @@
+import os
+
 API_TOKEN_BOT = "6299673742:AAECZWIdE_-nNaEVsJ9jwhsae15QJ7EvntA"
-API_TOKEN_OPENAI = "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"
+API_TOKEN_OPENAI = os.environ['API_TOKEN_OPENAI'] 
 
 channel_id = -1001641980767
 
