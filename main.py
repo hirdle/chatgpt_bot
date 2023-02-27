@@ -53,6 +53,7 @@ def get_chatgpt_data(prompt, history):
         return r.json()['choices'][0]['text'].strip()
 
     except Exception as e:
+        print(error)
         return f"Возникли некоторые трудности.\nПопробуйте очистить чат: /clear"
 
 
@@ -66,8 +67,8 @@ async def check_subscrition(message):
     if chat_member.status == 'member' or chat_member.status == 'administrator' or chat_member.status == 'creator':
         return
     else:
-        await bot.send_message(message.from_user.id, config.no_subscription_text, reply_markup=check_subscrition_keyboard)
-        return True
+        # await bot.send_message(message.from_user.id, config.no_subscription_text, reply_markup=check_subscrition_keyboard)
+        return
 
 
 @dp.callback_query_handler(lambda c: c.data == 'check_subs')
@@ -126,7 +127,7 @@ async def handle_any_text_message(message: types.Message):
     if await check_subscrition(message):
         return
 
-    sticker = types.InputFile.from_url("https://sticker-collection.com/stickers/animated/chatex2/whatsapp/99e1571a-181a-49ce-a6a6-97ec32002809file_3942631.webp")
+    sticker = types.InputFile.from_url("https://stickerswiki.ams3.cdn.digitaloceanspaces.com/Baddy_bot/6598443.512.webp")
     message_sticker = await bot.send_sticker(chat_id=message.chat.id, sticker=sticker)
 
 
