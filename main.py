@@ -130,13 +130,14 @@ async def clear_chat_function(message: types.Message):
 
 @dp.message_handler()
 async def handle_any_text_message(message: types.Message):
+
+    if message.chat.type != "group":
     
-    if await check_subscrition(message):
-        return
+        if await check_subscrition(message):
+            return
 
     sticker = types.InputFile.from_url("https://stickerswiki.ams3.cdn.digitaloceanspaces.com/Baddy_bot/6598443.512.webp")
     message_sticker = await bot.send_sticker(chat_id=message.chat.id, sticker=sticker)
-
 
     dialog = getDialog(message.from_user.id)['messages']
 
