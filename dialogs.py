@@ -2,7 +2,7 @@ import pysondb
 db = pysondb.getDb("dialogs.json")
 
 
-def getLenUsers():
+def getLenDialogsUsers():
     return len(db.getAll())
 
 def getDialog(id):

@@ -1,7 +1,9 @@
 import logging
 import config
 
-from database import getDialog, addDialog, clearDialog, getLenUsers
+from dialogs import getDialog, addDialog, clearDialog, getLenDialogsUsers
+from users import add_user, get_all_users
+
 
 import requests
 
@@ -97,7 +99,7 @@ async def start_function(message: types.Message):
     if await check_subscrition(message):
         return
 
-    await bot.send_message(message.from_user.id, f"Пользователей: {getLenUsers()}")
+    await bot.send_message(message.from_user.id, f"Всего пользователей: {len(get_all_users())}\nАктивных ользователей: {getLenDialogsUsers()}")
 
 
 @dp.message_handler(commands=['start'])
