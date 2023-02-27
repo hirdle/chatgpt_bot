@@ -99,7 +99,7 @@ async def start_function(message: types.Message):
     if await check_subscrition(message):
         return
 
-    await bot.send_message(message.from_user.id, f"Всего пользователей: {len(get_all_users())}\nАктивных ользователей: {getLenDialogsUsers()}")
+    await bot.send_message(message.from_user.id, f"Всего пользователей: {len(get_all_users())}\nАктивных пользователей: {getLenDialogsUsers()}")
 
 
 @dp.message_handler(commands=['start'])
