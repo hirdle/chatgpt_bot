@@ -1,7 +1,7 @@
 import logging
 import config
 
-from database import getDialog, addDialog, clearDialog
+from database import getDialog, addDialog, clearDialog, getLenUsers
 
 import requests
 
@@ -88,9 +88,16 @@ async def check_subs(callback_query: CallbackQuery):
 
     await bot.answer_callback_query(callback_query.id)
     
-    
     await bot.send_message(callback_query.from_user.id, config.premium_text, reply_markup=create_keyboard(backBtn=True))
 
+
+@dp.message_handler(commands=['users'])
+async def start_function(message: types.Message):
+
+    if await check_subscrition(message):
+        return
+
+    await bot.send_message(message.from_user.id, f"Пользователей: {getLenUsers()}")
 
 
 @dp.message_handler(commands=['start'])

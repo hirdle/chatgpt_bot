@@ -2,6 +2,9 @@ import pysondb
 db = pysondb.getDb("dialogs.json")
 
 
+def getLenUsers():
+    return len(db.getAll())
+
 def getDialog(id):
     dialog = db.getByQuery({"userid": id})
     if dialog == []:
