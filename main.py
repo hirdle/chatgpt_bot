@@ -90,7 +90,7 @@ async def check_subs(callback_query: CallbackQuery):
 
     await bot.answer_callback_query(callback_query.id)
 
-    photo = types.InputFile('premium.jpeg')
+    photo = types.InputFile('premium.jpg')
     
     await bot.send_photo(callback_query.from_user.id, photo, caption=config.premium_text, reply_markup=create_keyboard(backBtn=True))
 
