@@ -2,4 +2,4 @@ __pycache__/
 venv/
 dialogs.json
 dialogs.json.lock
-# app.db
+app.db
