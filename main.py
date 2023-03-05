@@ -64,7 +64,7 @@ def get_chatgpt_data(prompt, history):
 
 
 
-check_subscrition_keyboard = create_keyboard({"Проверить подписку":"check_subs",'Оформить "Премиум"':"buy_subs"})
+check_subscrition_keyboard = create_keyboard({"Проверить подписку":"check_subs",'Пополнить баланс':"buy_balance"})
 start_keyboard = create_keyboard({'Пополнить баланс':"buy_balance"})
 
 
@@ -130,7 +130,7 @@ async def start_function_callback(callback_query: CallbackQuery):
     if await check_subscrition(callback_query):
         return
 
-    await bot.send_message(callback_query.from_user.id, start_text(message), reply_markup=start_keyboard)
+    await bot.send_message(callback_query.from_user.id, start_text(callback_query), reply_markup=start_keyboard)
 
 
 @dp.message_handler(commands=['clear'])
@@ -150,7 +150,7 @@ async def handle_any_text_message(message: types.Message):
             return
     
     if check_user_limit(message.chat.id) == False:
-        await message.answer("пошел нахуй))")
+        await message.answer("Пополните баланс.")
         return
 
     add_user_current_req(message.chat.id)
