@@ -41,7 +41,7 @@ def get_chatgpt_data(prompt, history):
         context = "\n".join(history)
 
         data = {
-            "model": "text-davinci-003",
+            "model": "gpt-3.5-turbo",
             "prompt": "context: "+context+"\n\nprompt: "+prompt,
             "max_tokens": 1000,
             "temperature": 0,
@@ -57,6 +57,7 @@ def get_chatgpt_data(prompt, history):
     except Exception as e:
         print(error)
         return f"Возникли некоторые трудности.\nПопробуйте очистить чат: /clear"
+
 
 
 check_subscrition_keyboard = create_keyboard({"Проверить подписку":"check_subs",'Оформить "Премиум"':"buy_subs"})
@@ -154,7 +155,8 @@ async def handle_any_text_message(message: types.Message):
         history=dialog
     )
 
-    addDialog(message.from_user.id, message.text, chatgpt_response)
+    # addDialog(message.from_user.id, message.text, chatgpt_response)
+    addDialog(message.from_user.id, message.text)
 
     await message.answer(chatgpt_response)
     await message.answer(config.start_text, reply_markup=start_keyboard)
