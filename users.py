@@ -24,10 +24,31 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     profile_id = Column(Integer)
+    current_requests = Column(Integer, default=0)
+    limit_requests = Column(Integer, default=100)
     registration_date = Column(Date)
     next_billing_date = Column(Date)
 
 Base.metadata.create_all(bind=engine)
+
+def add_user_current_req(user_id):
+    with Session(autoflush=False, bind=engine) as db:
+
+        current_user = db.query(User).filter(User.profile_id==user_id).first()
+
+        if (current_user != None):
+
+            current_user.current_requests += 1
+    
+            db.commit() 
+
+def get_user_limit_req(user_id):
+    return get_current_user(user_id).limit_requests
+
+def get_user_current_req(user_id):
+    return get_current_user(user_id).current_requests
+
+check_user_limit = lambda id: get_user_current_req(id) < get_user_limit_req(id)
 
 
 def get_all_users():

@@ -2,7 +2,7 @@ import logging
 import config
 
 from dialogs import getDialog, addDialog, clearDialog, getLenDialogsUsers
-from users import add_user, get_all_users
+from users import add_user, get_all_users, get_user_limit_req, get_user_current_req, check_user_limit, add_user_current_req
 
 
 import requests
@@ -15,6 +15,8 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=config.API_TOKEN_BOT)
 dp = Dispatcher(bot)
 
+
+start_text = lambda m: f"Ваш баланс: { get_user_limit_req(m.from_user.id)-get_user_current_req(m.from_user.id) }\nОтправьте сообщением задачу для нейросети.  👇"
 
 
 def create_keyboard(keys={}, backBtn=False):
@@ -36,13 +38,13 @@ def get_chatgpt_data(prompt, history):
     error = ""
 
     try:
-        url = "https://api.openai.com/v1/completions"
+        url = "https://api.openai.com/v1/chat/completions"
 
-        context = "\n".join(history)
+        history.append({"role": "user", "content": prompt})
 
         data = {
             "model": "gpt-3.5-turbo",
-            "prompt": "context: "+context+"\n\nprompt: "+prompt,
+            "messages": history,
             "max_tokens": 1000,
             "temperature": 0,
         }
@@ -52,7 +54,9 @@ def get_chatgpt_data(prompt, history):
 
         error = r.text
 
-        return r.json()['choices'][0]['text'].strip()
+        
+
+        return r.json()['choices'][-1]['message']['content'].strip()
 
     except Exception as e:
         print(error)
@@ -61,7 +65,7 @@ def get_chatgpt_data(prompt, history):
 
 
 check_subscrition_keyboard = create_keyboard({"Проверить подписку":"check_subs",'Оформить "Премиум"':"buy_subs"})
-start_keyboard = create_keyboard({'Оформить "Премиум"':"buy_subs"})
+start_keyboard = create_keyboard({'Пополнить баланс':"buy_balance"})
 
 
 async def check_subscrition(message):
@@ -82,11 +86,11 @@ async def check_subs(callback_query: CallbackQuery):
     if await check_subscrition(callback_query):
         return
     
-    await bot.send_message(callback_query.from_user.id, config.start_text, reply_markup=start_keyboard)
+    await bot.send_message(callback_query.from_user.id, start_text(callback_query), reply_markup=start_keyboard)
 
 
 
-@dp.callback_query_handler(lambda c: c.data == 'buy_subs')
+@dp.callback_query_handler(lambda c: c.data == 'buy_balance')
 async def check_subs(callback_query: CallbackQuery):
 
     await bot.answer_callback_query(callback_query.id)
@@ -115,7 +119,7 @@ async def start_function(message: types.Message):
     if await check_subscrition(message):
         return
 
-    await bot.send_message(message.from_user.id, config.start_text, reply_markup=start_keyboard)
+    await bot.send_message(message.from_user.id, start_text(message), reply_markup=start_keyboard)
 
 
 @dp.callback_query_handler(lambda c: c.data == 'start')
@@ -126,7 +130,7 @@ async def start_function_callback(callback_query: CallbackQuery):
     if await check_subscrition(callback_query):
         return
 
-    await bot.send_message(callback_query.from_user.id, config.start_text, reply_markup=start_keyboard)
+    await bot.send_message(callback_query.from_user.id, start_text(message), reply_markup=start_keyboard)
 
 
 @dp.message_handler(commands=['clear'])
@@ -144,6 +148,12 @@ async def handle_any_text_message(message: types.Message):
     
         if await check_subscrition(message):
             return
+    
+    if check_user_limit(message.chat.id) == False:
+        await message.answer("пошел нахуй))")
+        return
+
+    add_user_current_req(message.chat.id)
 
     sticker = types.InputFile.from_url("https://stickerswiki.ams3.cdn.digitaloceanspaces.com/Baddy_bot/6598443.512.webp")
     message_sticker = await bot.send_sticker(chat_id=message.chat.id, sticker=sticker)
@@ -155,11 +165,11 @@ async def handle_any_text_message(message: types.Message):
         history=dialog
     )
 
-    # addDialog(message.from_user.id, message.text, chatgpt_response)
-    addDialog(message.from_user.id, message.text)
+    addDialog(message.from_user.id, message.text, chatgpt_response)
+    # addDialog(message.from_user.id, message.text)
 
     await message.answer(chatgpt_response)
-    await message.answer(config.start_text, reply_markup=start_keyboard)
+    await message.answer(start_text(message), reply_markup=start_keyboard)
     await bot.delete_message(chat_id=message.chat.id, message_id=message_sticker.message_id)
 
 

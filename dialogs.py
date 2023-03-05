@@ -16,15 +16,15 @@ def createDialog(id):
     db.add({"userid": id, "messages": []})
     return getDialog(id)
 
-def addDialog(id, q):
+def addDialog(id, q, a):
 
     dialog = getDialog(id)
 
     if dialog == []:
         dialog = createDialog(id)
 
-    dialog['messages'].append(q)
-    # dialog['messages'].append(a)
+    dialog['messages'].append({"role": "user", "content": q})
+    dialog['messages'].append({"role": "assistant", "content": a})
 
     db.updateByQuery({"userid": id}, {"messages": dialog['messages']})
     return dialog
