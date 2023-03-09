@@ -1,9 +1,11 @@
 import os
 
-API_TOKEN_BOT = "6299673742:AAECZWIdE_-nNaEVsJ9jwhsae15QJ7EvntA"
+# API_TOKEN_BOT = "6299673742:AAECZWIdE_-nNaEVsJ9jwhsae15QJ7EvntA" # prod
+API_TOKEN_BOT = "6219893683:AAEXAfSoM9KglwMe2PK9ZWVhdaxU6kBJF0Q" # test
 API_TOKEN_OPENAI = os.environ['API_TOKEN_OPENAI'] 
 
 channel_id = -1001641980767
+official_group_id = -1001851878012
 
 
 subscription_text = """

@@ -1,8 +1,9 @@
 import logging
 import config
+import time
 
 from dialogs import getDialog, addDialog, clearDialog, getLenDialogsUsers
-from users import add_user, get_all_users, get_user_limit_req, get_user_current_req, check_user_limit, add_user_current_req
+from users import add_user, get_all_users, get_user_limit_req, get_user_current_req, check_user_limit, add_user_current_req, get_active_users
 
 
 import requests
@@ -10,10 +11,17 @@ import requests
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+
+
+storage = MemoryStorage()
+
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=config.API_TOKEN_BOT)
-dp = Dispatcher(bot)
+dp = Dispatcher(bot, storage=storage)
 
 
 start_text = lambda m: f"Ваш баланс: { get_user_limit_req(m.from_user.id)-get_user_current_req(m.from_user.id) }\nОтправьте сообщением задачу для нейросети.  👇"
@@ -33,7 +41,9 @@ def create_keyboard(keys={}, backBtn=False):
     return keyboard
 
 
-def get_chatgpt_data(prompt, history):
+# получение данных от chatgpt
+
+def get_chatgpt_data(prompt, history, user_id, groupState):
 
     error = ""
 
@@ -52,14 +62,15 @@ def get_chatgpt_data(prompt, history):
         headers = {'Accept': 'application/json', 'Authorization': 'Bearer '+config.API_TOKEN_OPENAI}
         r = requests.post(url, headers=headers, json=data)
 
-        error = r.text
+        error = r.text.strip()
 
-        
+        if r.json().get("error") == None and groupState == False:
+            add_user_current_req(user_id)
 
         return r.json()['choices'][-1]['message']['content'].strip()
 
     except Exception as e:
-        print(error)
+        # print(error)
         return f"Возникли некоторые трудности.\nПопробуйте очистить чат: /clear"
 
 
@@ -69,13 +80,33 @@ start_keyboard = create_keyboard({'Пополнить баланс':"buy_balance
 
 
 async def check_subscrition(message):
-    chat_member = await bot.get_chat_member(chat_id=config.channel_id, user_id=message.from_user.id)
+    return
+    # chat_member = await bot.get_chat_member(chat_id=config.channel_id, user_id=message.from_user.id)
 
-    if chat_member.status == 'member' or chat_member.status == 'administrator' or chat_member.status == 'creator':
-        return
-    else:
-        # await bot.send_message(message.from_user.id, config.no_subscription_text, reply_markup=check_subscrition_keyboard)
-        return
+    # if chat_member.status == 'member' or chat_member.status == 'administrator' or chat_member.status == 'creator':
+    #     return
+    # else:
+    #     # await bot.send_message(message.from_user.id, config.no_subscription_text, reply_markup=check_subscrition_keyboard)
+    #     return
+
+
+async def send_notify(m):
+    users = get_all_users()
+    users.reverse()
+    for user in users:
+        try:
+            await bot.send_message(user.profile_id, m)
+            time.sleep(0.5)
+        except: pass
+
+
+@dp.message_handler(commands=['send'])
+async def start_function(message: types.Message):
+
+    await message.answer("Рассылка запущена")
+
+    await send_notify(message.text.replace("/send", ""))
+    
 
 
 @dp.callback_query_handler(lambda c: c.data == 'check_subs')
@@ -100,13 +131,16 @@ async def check_subs(callback_query: CallbackQuery):
     await bot.send_photo(callback_query.from_user.id, photo, caption=config.premium_text, reply_markup=create_keyboard(backBtn=True))
 
 
+
+
+
 @dp.message_handler(commands=['users'])
 async def start_function(message: types.Message):
 
     if await check_subscrition(message):
         return
 
-    await bot.send_message(message.from_user.id, f"Всего пользователей: {len(get_all_users())}\nАктивных пользователей: {getLenDialogsUsers()}")
+    await bot.send_message(message.from_user.id, f"Всего пользователей: {len(get_all_users())}\nАктивных пользователей: {getLenDialogsUsers()}\nАктивных сейчас пользователей: {get_active_users()}")
 
 
 @dp.message_handler(commands=['start'])
@@ -141,19 +175,24 @@ async def clear_chat_function(message: types.Message):
     await message.answer("Диалог успешно очищен.")
 
 
+
 @dp.message_handler()
 async def handle_any_text_message(message: types.Message):
 
-    if message.chat.type != "group":
+    groupState = "group" in message.chat.type 
+
+    if not groupState:
     
         if await check_subscrition(message):
             return
-    
-    if check_user_limit(message.chat.id) == False:
-        await message.answer("Пополните баланс.")
-        return
 
-    add_user_current_req(message.chat.id)
+        if check_user_limit(message.chat.id) == False:
+            await message.answer("Пополните баланс.")
+            return
+
+    if groupState and message.chat.id != config.official_group_id:
+        return
+    
 
     sticker = types.InputFile.from_url("https://stickerswiki.ams3.cdn.digitaloceanspaces.com/Baddy_bot/6598443.512.webp")
     message_sticker = await bot.send_sticker(chat_id=message.chat.id, sticker=sticker)
@@ -162,14 +201,17 @@ async def handle_any_text_message(message: types.Message):
 
     chatgpt_response = get_chatgpt_data(
         prompt=message.text,
-        history=dialog
+        history=dialog,
+        user_id=message.from_user.id,
+        groupState=groupState
     )
 
     addDialog(message.from_user.id, message.text, chatgpt_response)
     # addDialog(message.from_user.id, message.text)
 
-    await message.answer(chatgpt_response)
-    await message.answer(start_text(message), reply_markup=start_keyboard)
+    await message.reply(chatgpt_response)
+    if not groupState:
+        await message.answer(start_text(message), reply_markup=start_keyboard)
     await bot.delete_message(chat_id=message.chat.id, message_id=message_sticker.message_id)
 
 
