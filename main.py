@@ -3,7 +3,7 @@ import config
 import time
 
 from dialogs import getDialog, addDialog, clearDialog, getLenDialogsUsers
-from users import add_user, get_all_users, get_user_limit_req, get_user_current_req, check_user_limit, add_user_current_req, get_active_users
+from users import add_user, get_all_users, get_user_limit_req, get_user_current_req, check_user_limit, add_user_current_req, get_active_users, get_usermode, change_mode_user
 
 
 import requests
@@ -39,6 +39,36 @@ def create_keyboard(keys={}, backBtn=False):
         keyboard.add(button)
 
     return keyboard
+
+
+# получение данных от chatgpt
+
+def get_dalle_data(prompt, user_id, groupState):
+
+    error = ""
+
+    try:
+        url = "https://api.openai.com/v1/images/generations"
+
+        data = {
+            "prompt": prompt,
+            "n": 1,
+            "size": "512x512"
+        }
+
+        headers = {'Accept': 'application/json', 'Authorization': 'Bearer '+config.API_TOKEN_OPENAI}
+        r = requests.post(url, headers=headers, json=data)
+
+        error = r.text.strip()
+
+        if r.json().get("error") == None and groupState == False:
+            add_user_current_req(user_id, num_req=2)
+
+        return r.json()['data'][0]['url']
+
+    except Exception as e:
+        # print(error)
+        return f"Возникли некоторые трудности.\nПопробуйте очистить чат: /clear"
 
 
 # получение данных от chatgpt
@@ -79,6 +109,9 @@ check_subscrition_keyboard = create_keyboard({"Проверить подписк
 start_keyboard = create_keyboard({'Пополнить баланс':"buy_balance"})
 
 
+
+# проверка подписки
+
 async def check_subscrition(message):
     return
     # chat_member = await bot.get_chat_member(chat_id=config.channel_id, user_id=message.from_user.id)
@@ -90,6 +123,8 @@ async def check_subscrition(message):
     #     return
 
 
+# отправка уведомлений
+
 async def send_notify(m):
     users = get_all_users()
     users.reverse()
@@ -100,14 +135,32 @@ async def send_notify(m):
         except: pass
 
 
+# отправка сообщения
+
 @dp.message_handler(commands=['send'])
 async def start_function(message: types.Message):
 
     await message.answer("Рассылка запущена")
 
     await send_notify(message.text.replace("/send", ""))
-    
 
+
+
+# сменить режим
+
+@dp.message_handler(commands=['mode'])
+async def start_function(message: types.Message):
+
+    if await check_subscrition(message):
+        return
+    
+    current_mode = change_mode_user(message.from_user.id)
+
+    await bot.send_message(message.from_user.id, f"Режим сменен на {config.modes[current_mode]}")
+
+
+
+# повторная проверка подписки
 
 @dp.callback_query_handler(lambda c: c.data == 'check_subs')
 async def check_subs(callback_query: CallbackQuery):
@@ -121,6 +174,8 @@ async def check_subs(callback_query: CallbackQuery):
 
 
 
+# купить подписку
+
 @dp.callback_query_handler(lambda c: c.data == 'buy_balance')
 async def check_subs(callback_query: CallbackQuery):
 
@@ -132,7 +187,7 @@ async def check_subs(callback_query: CallbackQuery):
 
 
 
-
+# отображение статистики
 
 @dp.message_handler(commands=['users'])
 async def start_function(message: types.Message):
@@ -142,6 +197,8 @@ async def start_function(message: types.Message):
 
     await bot.send_message(message.from_user.id, f"Всего пользователей: {len(get_all_users())}\nАктивных пользователей: {getLenDialogsUsers()}\nАктивных сейчас пользователей: {get_active_users()}")
 
+
+# команда старт
 
 @dp.message_handler(commands=['start'])
 async def start_function(message: types.Message):
@@ -167,6 +224,9 @@ async def start_function_callback(callback_query: CallbackQuery):
     await bot.send_message(callback_query.from_user.id, start_text(callback_query), reply_markup=start_keyboard)
 
 
+
+# очистка контекста
+
 @dp.message_handler(commands=['clear'])
 async def clear_chat_function(message: types.Message):
 
@@ -175,6 +235,8 @@ async def clear_chat_function(message: types.Message):
     await message.answer("Диалог успешно очищен.")
 
 
+
+# обработка для нейросети
 
 @dp.message_handler()
 async def handle_any_text_message(message: types.Message):
@@ -193,27 +255,47 @@ async def handle_any_text_message(message: types.Message):
     if groupState and message.chat.id != config.official_group_id:
         return
     
-
     sticker = types.InputFile.from_url("https://stickerswiki.ams3.cdn.digitaloceanspaces.com/Baddy_bot/6598443.512.webp")
     message_sticker = await bot.send_sticker(chat_id=message.chat.id, sticker=sticker)
 
-    dialog = getDialog(message.from_user.id)['messages']
+    if get_usermode(message.from_user.id) == 0:
 
-    chatgpt_response = get_chatgpt_data(
-        prompt=message.text,
-        history=dialog,
-        user_id=message.from_user.id,
-        groupState=groupState
-    )
+        dialog = getDialog(message.from_user.id)['messages']
 
-    addDialog(message.from_user.id, message.text, chatgpt_response)
-    # addDialog(message.from_user.id, message.text)
+        chatgpt_response = get_chatgpt_data(
+            prompt=message.text,
+            history=dialog,
+            user_id=message.from_user.id,
+            groupState=groupState
+        )
 
-    await message.reply(chatgpt_response)
+        addDialog(message.from_user.id, message.text, chatgpt_response)
+
+        await message.reply(chatgpt_response)
+
+
+    elif get_usermode(message.from_user.id) == 1:
+
+        dalle_response = get_dalle_data(
+            prompt=message.text,
+            user_id=message.from_user.id,
+            groupState=groupState
+        )
+
+        image = types.InputFile.from_url(dalle_response)
+
+
+
+        await message.reply_photo(photo=image)
+
+
     if not groupState:
         await message.answer(start_text(message), reply_markup=start_keyboard)
+
     await bot.delete_message(chat_id=message.chat.id, message_id=message_sticker.message_id)
 
 
+
+# запуск
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)

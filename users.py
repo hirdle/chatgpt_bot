@@ -24,7 +24,7 @@ class User(Base):
   
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    mode = Column(Integer)
+    mode = Column(Integer, default=0)
     profile_id = Column(Integer)
     current_requests = Column(Integer, default=0)
     limit_requests = Column(Integer, default=100)
@@ -36,6 +36,28 @@ Base.metadata.create_all(bind=engine)
 
 
 
+def change_mode_user(user_id):
+    with Session(autoflush=False, bind=engine) as db:
+
+        current_user = db.query(User).filter(User.profile_id==user_id).first()
+
+        if (current_user != None):
+
+            if current_user.mode == 0:
+                current_user.mode = 1
+            else:
+                current_user.mode = 0
+    
+            db.commit() 
+
+            return current_user.mode
+
+
+
+# получить режим
+
+def get_usermode(user_id):
+    return get_current_user(user_id).mode
 
 
 # проверка лимитов
@@ -51,14 +73,15 @@ check_user_limit = lambda id: get_user_current_req(id) < get_user_limit_req(id)
 
 # добавить последний запрос для пользователя
 
-def add_user_current_req(user_id):
+def add_user_current_req(user_id, num_req=1):
     with Session(autoflush=False, bind=engine) as db:
 
         current_user = db.query(User).filter(User.profile_id==user_id).first()
 
         if (current_user != None):
 
-            current_user.current_requests += 1
+            current_user.current_requests += num_req
+
             current_user.last_request = get_now_datetime()
     
             db.commit() 
